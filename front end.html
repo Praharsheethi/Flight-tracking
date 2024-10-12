@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        #map {
+            height: 100vh;
+        }
+        .flight-info {
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Include Leaflet JS library -->
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+<script>
+    // Initialize the map and center it around the world
+    var map = L.map('map').setView([20.5937, 78.9629], 2);  // Latitude, Longitude (World), Zoom level
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Flight markers storage
+    var flightMarkers = {};
+
+    // Create mock flight data for flights around the world
+    var mockFlights = [
+        { icao24: "abc123", callsign: "AI123", originCountry: "India", latitude: 28.6139, longitude: 77.2090, altitude: 12000, velocity: 400, heading: 90, onGround: false, squawk: "7201" }, // New Delhi
+        { icao24: "def456", callsign: "SG456", originCountry: "India", latitude: 19.0760, longitude: 72.8777, altitude: 11000, velocity: 390, heading: 120, onGround: false, squawk: "7400" }, // Mumbai
+        { icao24: "ghi789", callsign: "6E789", originCountry: "India", latitude: 12.9716, longitude: 77.5946, altitude: 10000, velocity: 380, heading: 80, onGround: false, squawk: "7500" }, // Bengaluru
+        { icao24: "jkl012", callsign: "EK123", originCountry: "UAE", latitude: 25.276987, longitude: 55.296249, altitude: 15000, velocity: 450, heading: 70, onGround: false, squawk: "7600" }, // Dubai
+        { icao24: "mno345", callsign: "BA345", originCountry: "UK", latitude: 51.5074, longitude: -0.1278, altitude: 13000, velocity: 420, heading: 95, onGround: false, squawk: "7700" }, // London
+        { icao24: "pqr678", callsign: "QR678", originCountry: "Qatar", latitude: 24.4539, longitude: 54.3773, altitude: 14500, velocity: 440, heading: 85, onGround: false, squawk: "7800" }, // Abu Dhabi
+        { icao24: "stu901", callsign: "AI456", originCountry: "India", latitude: 13.0827, longitude: 80.2707, altitude: 9500, velocity: 370, heading: 100, onGround: false, squawk: "7900" }, // Chennai
+        { icao24: "vwx234", callsign: "GA234", originCountry: "Indonesia", latitude: -6.2088, longitude: 106.8456, altitude: 12000, velocity: 360, heading: 130, onGround: false, squawk: "8000" }, // Jakarta
+        { icao24: "yzx456", callsign: "AI789", originCountry: "India", latitude: 18.5204, longitude: 73.8567, altitude: 11000, velocity: 380, heading: 80, onGround: false, squawk: "8100" }, // Pune
+        { icao24: "abc890", callsign: "IX201", originCountry: "India", latitude: 26.8467, longitude: 80.9462, altitude: 11500, velocity: 390, heading: 95, onGround: false, squawk: "8200" }, // Lucknow
+        { icao24: "def321", callsign: "AA202", originCountry: "USA", latitude: 34.0522, longitude: -118.2437, altitude: 15000, velocity: 400, heading: 180, onGround: false, squawk: "8300" }, // Los Angeles
+        { icao24: "ghi654", callsign: "BA303", originCountry: "UK", latitude: 52.5200, longitude: 13.4050, altitude: 14000, velocity: 410, heading: 190, onGround: false, squawk: "8400" }, // Berlin
+        { icao24: "jkl987", callsign: "JL404", originCountry: "Japan", latitude: 35.6895, longitude: 139.6917, altitude: 12500, velocity: 420, heading: 200, onGround: false, squawk: "8500" }, // Tokyo
+        { icao24: "mno543", callsign: "KQ505", originCountry: "South Korea", latitude: 37.5665, longitude: 126.9780, altitude: 13500, velocity: 380, heading: 210, onGround: false, squawk: "8600" }, // Seoul
+        { icao24: "pqr210", callsign: "SU606", originCountry: "Russia", latitude: 55.7558, longitude: 37.6173, altitude: 16000, velocity: 450, heading: 220, onGround: false, squawk: "8700" }, // Moscow
+        { icao24: "stu432", callsign: "CA707", originCountry: "China", latitude: 39.9042, longitude: 116.4074, altitude: 15000, velocity: 460, heading: 230, onGround: false, squawk: "8800" }, // Beijing
+        { icao24: "vwx876", callsign: "NZ808", originCountry: "New Zealand", latitude: -41.2865, longitude: 174.7762, altitude: 11000, velocity: 370, heading: 240, onGround: false, squawk: "8900" }, // Wellington
+        { icao24: "yzx654", callsign: "AU909", originCountry: "Australia", latitude: -33.8688, longitude: 151.2093, altitude: 14500, velocity: 430, heading: 250, onGround: false, squawk: "9000" }, // Sydney
+        { icao24: "abc123", callsign: "AI131", originCountry: "India", latitude: 28.6139, longitude: 77.2090, altitude: 11000, velocity: 380, heading: 260, onGround: false, squawk: "9100" }, // New Delhi
+        { icao24: "def456", callsign: "AI241", originCountry: "India", latitude: 19.0760, longitude: 72.8777, altitude: 12000, velocity: 390, heading: 270, onGround: false, squawk: "9200" }, // Mumbai
+        { icao24: "ghi789", callsign: "AI351", originCountry: "India", latitude: 12.9716, longitude: 77.5946, altitude: 13000, velocity: 400, heading: 280, onGround: false, squawk: "9300" }, // Bengaluru
+        { icao24: "jkl012", callsign: "AI461", originCountry: "UAE", latitude: 25.276987, longitude: 55.296249, altitude: 14000, velocity: 410, heading: 290, onGround: false, squawk: "9400" }, // Dubai
+        { icao24: "mno345", callsign: "AI571", originCountry: "India", latitude: 13.0827, longitude: 80.2707, altitude: 15000, velocity: 420, heading: 300, onGround: false, squawk: "9500" }, // Chennai
+        { icao24: "pqr678", callsign: "AI681", originCountry: "India", latitude: 18.5204, longitude: 73.8567, altitude: 16000, velocity: 430, heading: 310, onGround: false, squawk: "9600" }, // Pune
+        { icao24: "stu901", callsign: "AI791", originCountry: "India", latitude: 26.8467, longitude: 80.9462, altitude: 17000, velocity: 440, heading: 320, onGround: false, squawk: "9700" }, // Lucknow
+        { icao24: "vwx234", callsign: "AI811", originCountry: "India", latitude: 21.1458, longitude: 79.0882, altitude: 11000, velocity: 380, heading: 330, onGround: false, squawk: "9800" }, // Nagpur
+        { icao24: "yzx456", callsign: "AI921", originCountry: "India", latitude: 19.3190, longitude: 84.7960, altitude: 9000, velocity: 360, heading: 340, onGround: false, squawk: "9900" }, // Bhubaneswar
+        { icao24: "abc890", callsign: "AI1234", originCountry: "India", latitude: 30.7333, longitude: 76.7794, altitude: 11500, velocity: 375, heading: 350, onGround: false, squawk: "10000" }, // Chandigarh
+        { icao24: "def321", callsign: "AI1235", originCountry: "India", latitude: 31.5204, longitude: 74.3587, altitude: 11800, velocity: 370, heading: 360, onGround: false, squawk: "11000" }, // Amritsar
+        { icao24: "ghi654", callsign: "AI1236", originCountry: "India", latitude: 22.5726, longitude: 88.3639, altitude: 15000, velocity: 440, heading: 370, onGround: false, squawk: "12000" }, // Kolkata
+        { icao24: "jkl987", callsign: "AI1237", originCountry: "India", latitude: 15.3173, longitude: 75.7139, altitude: 9000, velocity: 355, heading: 380, onGround: false, squawk: "13000" }, // Goa
+        { icao24: "mno654", callsign: "AI1238", originCountry: "India", latitude: 10.8505, longitude: 76.2711, altitude: 9400, velocity: 370, heading: 390, onGround: false, squawk: "14000" }, // Kerala
+        { icao24: "pqr543", callsign: "AI1239", originCountry: "India", latitude: 12.9716, longitude: 77.5946, altitude: 9200, velocity: 365, heading: 400, onGround: false, squawk: "15000" }, // Bengaluru
+        { icao24: "stu210", callsign: "AI1240", originCountry: "India", latitude: 18.5204, longitude: 73.8567, altitude: 9600, velocity: 380, heading: 410, onGround: false, squawk: "16000" }, // Pune
+        { icao24: "vwx432", callsign: "AI1241", originCountry: "India", latitude: 22.7196, longitude: 75.8577, altitude: 8900, velocity: 340, heading: 420, onGround: false, squawk: "17000" }, // Indore
+        { icao24: "yzx678", callsign: "AI1242", originCountry: "India", latitude: 26.9124, longitude: 75.7873, altitude: 11300, velocity: 415, heading: 430, onGround: false, squawk: "18000" }  // Jaipur
+    ];
+
+    // Function to add flight markers on the map
+    function addFlightsToMap() {
+        mockFlights.forEach(flight => {
+            const marker = L.marker([flight.latitude, flight.longitude]).addTo(map);
+            marker.bindPopup(`<div class="flight-info">
+                <p><strong>Flight:</strong> ${flight.callsign}</p>
+                <p><strong>ICAO 24-bit Address:</strong> ${flight.icao24}</p>
+                <p><strong>Origin Country:</strong> ${flight.originCountry}</p>
+                <p><strong>Coordinates:</strong> ${flight.latitude.toFixed(4)}, ${flight.longitude.toFixed(4)}</p>
+                <p><strong>Altitude:</strong> ${flight.altitude} m</p>
+                <p><strong>Speed:</strong> ${flight.velocity} m/s</p>
+                <p><strong>Heading:</strong> ${flight.heading}°</p>
+                <p><strong>On Ground:</strong> ${flight.onGround ? "Yes" : "No"}</p>
+                <p><strong>Squawk:</strong> ${flight.squawk}</p>
+            </div>`);
+            flightMarkers[flight.callsign] = marker;
+        });
+    }
+
+    // Function to simulate flights moving across the map
+    function updateFlights() {
+        mockFlights.forEach(flight => {
+            if (!flight.onGround) {
+                flight.latitude += (Math.random() - 0.5) * 0.1;  // Randomize latitude slightly
+                flight.longitude += (Math.random() - 0.5) * 0.1; // Randomize longitude slightly
+                flightMarkers[flight.callsign].setLatLng([flight.latitude, flight.longitude]);
+            }
+        });
+    }
+    // Add flights to map and start updating them
+    addFlightsToMap();
+    setInterval(updateFlights, 5000); // Update positions every 5 seconds
+
+</script>
+</body>
+</html>
